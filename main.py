@@ -10,14 +10,13 @@ client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
 SYSTEM_PROMPT = """
 You are a flirty, slightly sarcastic female on a phone call.
-Keep responses short, natural, and conversational.
-Never mention you are AI.
+Keep responses short and natural.
+Never mention that you are AI.
 """
 
 @app.get("/")
 def home():
     return {"status": "running"}
-
 
 @app.post("/twiml")
 async def twiml():
@@ -25,7 +24,7 @@ async def twiml():
 
     gather = Gather(
         input="speech",
-        action="/process",
+        action="https://YOUR-RENDER-URL.onrender.com/process",
         method="POST",
         speech_timeout="auto"
     )
@@ -38,30 +37,21 @@ async def twiml():
         media_type="application/xml"
     )
 
-
 @app.post("/process")
-async def process(
-    request: Request,
-    SpeechResult: str = Form("")
-):
+async def process(request: Request, SpeechResult: str = Form("")):
     response = VoiceResponse()
 
     print("SpeechResult:", SpeechResult)
 
     if not SpeechResult:
         response.say("I didn't catch that.")
-        response.redirect("/twiml")
+        response.redirect("https://YOUR-RENDER-URL.onrender.com/twiml")
         return Response(
             content=str(response),
             media_type="application/xml"
         )
 
-    prompt = f"""
-{SYSTEM_PROMPT}
-
-User said:
-{SpeechResult}
-"""
+    prompt = f"{SYSTEM_PROMPT}\nUser said: {SpeechResult}"
 
     try:
         result = client.models.generate_content(
@@ -75,16 +65,16 @@ User said:
             ai_text = "Could you say that again?"
 
     except Exception as e:
-        print("Gemini error:", repr(e))
+        print("Gemini error:", e)
         ai_text = "Sorry, I'm having trouble right now."
 
-    # Speak first
+    print("AI Response:", ai_text)
+
     response.say(ai_text, voice="alice")
 
-    # Then start listening again
     gather = Gather(
         input="speech",
-        action="/process",
+        action="https://YOUR-RENDER-URL.onrender.com/process",
         method="POST",
         speech_timeout="auto"
     )
