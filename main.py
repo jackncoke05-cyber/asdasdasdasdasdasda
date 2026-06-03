@@ -1,42 +1,38 @@
-from fastapi import FastAPI, Request, Form, Response
 import os
+from fastapi import FastAPI, Form, Response
+from twilio.twiml.voice_response import VoiceResponse, Gather
 import google.generativeai as genai
 
 app = FastAPI()
 
 # Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-1.5-flash')
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-SYSTEM_PROMPT = """
-You are Chloe. You have a dark, cynical, and biting personality. 
-You are not here to be nice or polite. You are sarcastic, blunt, and slightly mean.
-- Keep your answers short, cold, and conversational—like a person who really doesn't want to be on the phone.
-- Use dry humor and don't be afraid to make the caller feel like they're wasting your time.
-- Never mention that you are an AI, a large language model, or a computer program.
-- You are a real, difficult person on the phone.
-"""
+# Define the grumpy persona
+SYSTEM_PROMPT = "You are a very grumpy, mean, and impatient assistant. You hate being interrupted and speak in short, snappy, rude sentences."
 
 @app.post("/twiml")
 async def start_call():
-    # This greets the caller
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say>Ugh, you again? Make it quick. What do you want?</Say>
-    <Gather input="speech" action="/process" timeout="3" speechTimeout="auto" />
-</Response>"""
-    return Response(content=twiml, media_type="application/xml")
+    """Initial response when the user calls."""
+    response = VoiceResponse()
+    gather = Gather(action="/process", input="speech", speech_timeout="auto", hints="hello")
+    gather.say("Ugh, what do you want?")
+    response.append(gather)
+    return Response(content=str(response), media_type="application/xml")
 
 @app.post("/process")
 async def process_speech(SpeechResult: str = Form(...)):
-    # Send what the user said to Gemini
-    response = model.generate_content(f"{SYSTEM_PROMPT} The user just said: {SpeechResult}")
-    ai_text = response.text
+    """Processes user speech and gets a reply from Gemini."""
     
-    # Respond with AI text
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say>{ai_text}</Say>
-    <Gather input="speech" action="/process" timeout="3" speechTimeout="auto" />
-</Response>"""
-    return Response(content=twiml, media_type="application/xml")
+    # Get response from Gemini
+    prompt = f"{SYSTEM_PROMPT} The user just said: {SpeechResult}"
+    gemini_response = model.generate_content(prompt)
+    ai_text = gemini_response.text
+    
+    # Respond back to the caller
+    response = VoiceResponse()
+    gather = Gather(action="/process", input="speech", speech_timeout="auto")
+    gather.say(ai_text)
+    response.append(gather)
+    return Response(content=str(response), media_type="application/xml")
