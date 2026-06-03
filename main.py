@@ -1,39 +1,73 @@
 import os
-from fastapi import FastAPI, Form, Response
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import Response
 from twilio.twiml.voice_response import VoiceResponse, Gather
-import google.generativeai as genai
+from google import genai
 
 app = FastAPI()
 
-# Configure Gemini
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+# NEW Gemini client (correct SDK)
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-# FIX: Removed "models/" prefix. This is the specific fix for the 404 error.
-model = genai.GenerativeModel("gemini-1.5-flash")
+SYSTEM_PROMPT = """
+You are a flirty, slightly sarcastic female AI voice on a phone call.
+Keep responses short (1-2 sentences max).
+You are natural, human-like, and conversational.
+Never mention you are AI.
+"""
 
-SYSTEM_PROMPT = "You are a very grumpy, mean, and impatient assistant. You hate being interrupted and speak in short, snappy, rude sentences."
+@app.get("/")
+def home():
+    return {"status": "running"}
 
 @app.post("/twiml")
-async def start_call():
-    """Initial response when the user calls."""
+async def twiml():
     response = VoiceResponse()
-    gather = Gather(action="/process", input="speech", speech_timeout="auto", hints="hello")
-    gather.say("Ugh, what do you want?")
+
+    gather = Gather(
+        input="speech",
+        action="/process",
+        method="POST",
+        speech_timeout="auto"
+    )
+
+    gather.say("Hello? Who is this?")
     response.append(gather)
+
     return Response(content=str(response), media_type="application/xml")
 
+
 @app.post("/process")
-async def process_speech(SpeechResult: str = Form(...)):
-    """Processes user speech and gets a reply from Gemini."""
-    
-    # Get response from Gemini
-    prompt = f"{SYSTEM_PROMPT} The user just said: {SpeechResult}"
-    gemini_response = model.generate_content(prompt)
-    ai_text = gemini_response.text
-    
-    # Respond back to the caller
+async def process(request: Request, SpeechResult: str = Form("")):
+
     response = VoiceResponse()
-    gather = Gather(action="/process", input="speech", speech_timeout="auto")
-    gather.say(ai_text)
+
+    # fallback if nothing heard
+    if not SpeechResult:
+        response.say("I didn't hear anything.")
+        response.redirect("/twiml")
+        return Response(str(response), media_type="application/xml")
+
+    prompt = f"{SYSTEM_PROMPT}\nUser said: {SpeechResult}"
+
+    try:
+        result = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        ai_text = result.text
+    except Exception as e:
+        print("Gemini error:", e)
+        ai_text = "I'm having issues right now."
+
+    gather = Gather(
+        input="speech",
+        action="/process",
+        method="POST",
+        speech_timeout="auto"
+    )
+
+    gather.say(ai_text, voice="alice")
     response.append(gather)
-    return Response(content=str(response), media_type="application/xml")
+
+    return Response(str(response), media_type="application/xml")
