@@ -1,7 +1,4 @@
 fastapi
 uvicorn
 twilio
-google-generativeaifastapi
-uvicorn
-google-genai
-twilio
+google-generativeai
