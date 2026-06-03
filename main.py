@@ -7,9 +7,10 @@ app = FastAPI()
 
 # Configure Gemini
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+
+# FIX: Removed "models/" prefix. This is the specific fix for the 404 error.
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# Define the grumpy persona
 SYSTEM_PROMPT = "You are a very grumpy, mean, and impatient assistant. You hate being interrupted and speak in short, snappy, rude sentences."
 
 @app.post("/twiml")
