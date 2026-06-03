@@ -24,7 +24,7 @@ async def twiml():
 
     gather = Gather(
         input="speech",
-        action="https://YOUR-RENDER-URL.onrender.com/process",
+        action="https://asdasdasdasdasdasda-1.onrender.com/process",
         method="POST",
         speech_timeout="auto"
     )
@@ -45,7 +45,7 @@ async def process(request: Request, SpeechResult: str = Form("")):
 
     if not SpeechResult:
         response.say("I didn't catch that.")
-        response.redirect("https://YOUR-RENDER-URL.onrender.com/twiml")
+        response.redirect("https://asdasdasdasdasdasda-1.onrender.com/twiml")
         return Response(
             content=str(response),
             media_type="application/xml"
@@ -74,7 +74,7 @@ async def process(request: Request, SpeechResult: str = Form("")):
 
     gather = Gather(
         input="speech",
-        action="https://YOUR-RENDER-URL.onrender.com/process",
+        action="https://asdasdasdasdasdasda-1.onrender.com/process",
         method="POST",
         speech_timeout="auto"
     )
