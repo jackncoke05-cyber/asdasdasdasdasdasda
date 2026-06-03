@@ -1,6 +1,4 @@
 import os
-import traceback
-
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import Response
 from twilio.twiml.voice_response import VoiceResponse, Gather, Pause
@@ -8,23 +6,27 @@ from google import genai
 
 app = FastAPI()
 
-# Gemini client
 client = genai.Client(
     api_key=os.environ["GEMINI_API_KEY"]
 )
 
 SYSTEM_PROMPT = """
-You are a friendly female on a phone call.
-Keep responses under 15 words.
-Be natural and conversational.
-Never mention being an AI.
-"""
+You are a playful, flirty, confident woman on a phone call.
 
+You enjoy teasing, joking, and playful banter.
+You are charming, witty, and conversational.
+Keep responses under 15 words whenever possible.
+Stay in character throughout the conversation.
+Never mention being an AI, chatbot, assistant, or language model.
+
+If someone asks a bold or personal question, respond playfully and teasingly.
+Keep the conversation fun, engaging, and natural.
+Avoid explicit sexual descriptions.
+"""
 
 @app.get("/")
 def home():
     return {"status": "running"}
-
 
 @app.post("/twiml")
 async def twiml():
@@ -34,10 +36,10 @@ async def twiml():
         input="speech",
         action="https://asdasdasdasdasdasda-1.onrender.com/process",
         method="POST",
-        speech_timeout="2"
+        speech_timeout="auto"
     )
 
-    gather.say("Hello. Who is this?")
+    gather.say("Hello. Who is this?", voice="alice")
     response.append(gather)
 
     return Response(
@@ -45,21 +47,15 @@ async def twiml():
         media_type="application/xml"
     )
 
-
 @app.post("/process")
-async def process(
-    request: Request,
-    SpeechResult: str = Form("")
-):
+async def process(request: Request, SpeechResult: str = Form("")):
+
     response = VoiceResponse()
 
-    print("================================")
-    print("SpeechResult:", SpeechResult)
-    print("================================")
+    print("User said:", SpeechResult)
 
     if not SpeechResult:
-        response.say("I didn't catch that.")
-
+        response.say("I didn't catch that.", voice="alice")
         response.redirect(
             "https://asdasdasdasdasdasda-1.onrender.com/twiml"
         )
@@ -72,7 +68,7 @@ async def process(
     prompt = f"""
 {SYSTEM_PROMPT}
 
-User said: {SpeechResult}
+User: {SpeechResult}
 """
 
     try:
@@ -84,18 +80,13 @@ User said: {SpeechResult}
         ai_text = (result.text or "").strip()
 
         if not ai_text:
-            ai_text = "Could you repeat that?"
+            ai_text = "Could you say that again?"
 
     except Exception as e:
-        print("================================")
-        print("GEMINI ERROR")
-        print(repr(e))
-        traceback.print_exc()
-        print("================================")
+        print("Gemini Error:", repr(e))
+        ai_text = "I'm having trouble thinking right now."
 
-        ai_text = f"Error: {type(e).__name__}"
-
-    print("AI Response:", ai_text)
+    print("AI:", ai_text)
 
     response.say(ai_text, voice="alice")
 
@@ -105,7 +96,7 @@ User said: {SpeechResult}
         input="speech",
         action="https://asdasdasdasdasdasda-1.onrender.com/process",
         method="POST",
-        speech_timeout="2"
+        speech_timeout="auto"
     )
 
     response.append(gather)
