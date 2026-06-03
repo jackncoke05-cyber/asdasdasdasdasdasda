@@ -10,19 +10,21 @@ app = FastAPI()
 
 # Gemini client
 client = genai.Client(
-    api_key=os.environ.get("GEMINI_API_KEY")
+    api_key=os.environ["GEMINI_API_KEY"]
 )
 
 SYSTEM_PROMPT = """
-You are a flirty, slightly sarcastic female on a phone call.
+You are a friendly female on a phone call.
 Keep responses under 15 words.
 Be natural and conversational.
-Never mention that you are AI.
+Never mention being an AI.
 """
+
 
 @app.get("/")
 def home():
     return {"status": "running"}
+
 
 @app.post("/twiml")
 async def twiml():
@@ -43,8 +45,12 @@ async def twiml():
         media_type="application/xml"
     )
 
+
 @app.post("/process")
-async def process(request: Request, SpeechResult: str = Form("")):
+async def process(
+    request: Request,
+    SpeechResult: str = Form("")
+):
     response = VoiceResponse()
 
     print("================================")
@@ -70,30 +76,20 @@ User said: {SpeechResult}
 """
 
     try:
-        print("Sending request to Gemini...")
-
         result = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt
         )
 
-        print("Gemini returned:")
-        print(result)
-
-        ai_text = ""
-
-        if hasattr(result, "text"):
-            ai_text = (result.text or "").strip()
+        ai_text = (result.text or "").strip()
 
         if not ai_text:
             ai_text = "Could you repeat that?"
 
     except Exception as e:
-
         print("================================")
         print("GEMINI ERROR")
-        print("Type:", type(e).__name__)
-        print("Message:", str(e))
+        print(repr(e))
         traceback.print_exc()
         print("================================")
 
@@ -102,6 +98,7 @@ User said: {SpeechResult}
     print("AI Response:", ai_text)
 
     response.say(ai_text, voice="alice")
+
     response.append(Pause(length=1))
 
     gather = Gather(
