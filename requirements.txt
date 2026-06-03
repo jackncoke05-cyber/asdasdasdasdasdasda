@@ -1,9 +1,5 @@
 fastapi
-uvicorn
-twilio
-google-generativeai
-python-multipartfastapi
-uvicorn
-twilio
-google-generativeai
+uvicorn[standard]
 python-multipart
+twilio
+google-genai
